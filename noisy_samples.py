@@ -49,8 +49,15 @@ class NoisySamples:
         self.generator = generator
 
     def add_noise(self, real_samples):
-        print('not implemented')
-        return real_samples
+        sample_number = len(real_samples)
+
+        mean = 0
+        var = 0.1
+        sigma = var ** 0.5
+        gauss = np.random.normal(mean, sigma, (sample_number, 28, 28, 1))
+        gauss = gauss.reshape(sample_number, 28, 28, 1)
+        noisy = real_samples + gauss
+        return noisy
 
     def denoise_samples(self, real_samples):
         noisy_samples = self.add_noise(real_samples)

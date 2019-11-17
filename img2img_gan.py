@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from matplotlib import pyplot
 
@@ -33,10 +35,15 @@ def build_generator(input_shape):
     cnn = Conv2D(64, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
 
+    cnn = Flatten()(cnn)
+
+    gen = Dense(7 * 7 * 384, activation='relu')(cnn)
+    gen = Reshape((7, 7, 384))(gen)
+
     # upsample to (14, 14, ...)
-    gen = Conv2DTranspose(32, kernel_size=(5, 5), strides=(2, 2), padding='same',
+    gen = Conv2DTranspose(192, kernel_size=(5, 5), strides=(2, 2), padding='same',
                           activation='relu',
-                          kernel_initializer='glorot_normal')(cnn)
+                          kernel_initializer='glorot_normal')(gen)
     gen = BatchNormalization()(gen)
 
     # upsample to (28, 28, ...)
@@ -92,6 +99,10 @@ class Img2ImgGAN:
         self.define_gan()
         self.noisy_samples = NoisySamples(generator=self.generator)
 
+        self.performance_output_path = 'performance/temp/'
+        if not os.path.exists(self.performance_output_path):
+            os.makedirs(self.performance_output_path)
+
     def define_gan(self):
         self.generator = build_generator(input_shape=self.data_shape)
         self.discriminator = build_discriminator(input_shape=self.data_shape)
@@ -119,15 +130,15 @@ class Img2ImgGAN:
             discriminator_loss = self.discriminator.train_on_batch(X, Y)
 
             noisy_input = self.noisy_samples.add_noise(realX)
-            act_real = np.ones(shape=(batch_size, 1))
+            act_real = np.ones(shape=(len(noisy_input),))
 
             gan_loss = self.adversarial.train_on_batch(noisy_input, act_real)
 
-            trained_samples += half_batch_size
+            trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
-    def performance(self, step, test_data, path='temp/'):
+    def performance(self, step, test_data):
         # prepare fake examples
         generated, _ = self.noisy_samples.denoise_samples(real_samples=test_data)
         # scale from [-1,1] to [0,1]
@@ -141,16 +152,17 @@ class Img2ImgGAN:
             # plot raw pixel data
             pyplot.imshow(generated[i, :, :, 0], cmap='gray_r')
         # save plot to file
-        fig_file = path + 'generated_plot_%04d.png' % (step + 1)
+        fig_file = self.performance_output_path + 'generated_plot_%04d.png' % (step + 1)
         pyplot.savefig(fig_file)
         pyplot.close()
         # save the generator model
-        model_file = path + 'model_%04d.h5' % (step + 1)
+        model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
 
 
 if __name__ == '__main__':
     dataset = Dataset()
+    dataset.split_test_data(test_size=100)
     gan = Img2ImgGAN(data_shape=(28, 28, 1))
     gan.train(dataset=dataset, batch_size=64, epochs=50)

@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from matplotlib import pyplot
 
@@ -103,6 +105,10 @@ class ACGAN:
         self.define_gan()
         self.fake_samples = FakeSamples(generator=self.generator, latent_size=latent_size, class_number=class_number)
 
+        self.performance_output_path = 'performance/temp/'
+        if not os.path.exists(self.performance_output_path):
+            os.makedirs(self.performance_output_path)
+
     def define_gan(self):
         self.generator = build_generator(latent_size=self.latent_size, class_number=self.class_number)
         self.discriminator = build_discriminator(input_shape=self.data_shape, class_number=self.class_number)
@@ -132,17 +138,17 @@ class ACGAN:
             discriminator_losses = self.discriminator.train_on_batch(X, [Y, label])
 
             noise, label = self.fake_samples.generate_latent_points(batch_size)
-            act_real = np.ones(shape=(batch_size, 1))
+            act_real = np.ones(shape=(batch_size,))
 
             gan_losses = self.adversarial.train_on_batch([noise, label], [act_real, label])
 
-            trained_samples += half_batch_size
+            trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: [%f, %f], Gan Loss: [%f, %f]'
                   % (trained_samples, dataset.sample_number,
                      discriminator_losses[0], discriminator_losses[1],
                      gan_losses[0], gan_losses[1]))
 
-    def performance(self, step, path='temp/'):
+    def performance(self, step):
         labels = np.asarray([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] * 10)
         # prepare fake examples
         generated, labels, _ = self.fake_samples.generate_fake_samples(sample_number=100, set_labels=labels)
@@ -158,11 +164,11 @@ class ACGAN:
             # plot raw pixel data
             pyplot.imshow(generated[i, :, :, 0], cmap='gray_r')
         # save plot to file
-        fig_file = path+'generated_plot_%04d.png' % (step + 1)
+        fig_file = self.performance_output_path + 'generated_plot_%04d.png' % (step + 1)
         pyplot.savefig(fig_file)
         pyplot.close()
         # save the generator model
-        model_file = path+'model_%04d.h5' % (step + 1)
+        model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
 

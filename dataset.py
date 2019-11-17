@@ -42,6 +42,7 @@ class Dataset:
             start = end
 
     def split_test_data(self, test_size=100):
+        self.sample_number -= test_size
         self.test_data = self.data[:test_size]
         self.data = self.data[test_size:]
         self.label = self.label[test_size:]

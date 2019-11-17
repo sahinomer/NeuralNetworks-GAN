@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from matplotlib import pyplot
 
@@ -95,6 +97,10 @@ class GAN:
         self.define_gan()
         self.fake_samples = FakeSamples(generator=self.generator, latent_size=latent_size)
 
+        self.performance_output_path = 'performance/temp/'
+        if not os.path.exists(self.performance_output_path):
+            os.makedirs(self.performance_output_path)
+
     def define_gan(self):
         self.generator = build_generator(latent_size=self.latent_size)
         self.discriminator = build_discriminator(input_shape=self.data_shape)
@@ -122,15 +128,15 @@ class GAN:
             discriminator_loss = self.discriminator.train_on_batch(X, Y)
 
             noise_input = self.fake_samples.generate_latent_points(batch_size)
-            act_real = np.ones(shape=(batch_size, 1))
+            act_real = np.ones(shape=(batch_size,))
 
             gan_loss = self.adversarial.train_on_batch(noise_input, act_real)
 
-            trained_samples += half_batch_size
+            trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
-    def performance(self, step, path='temp/'):
+    def performance(self, step):
         # prepare fake examples
         generated, _ = self.fake_samples.generate_fake_samples(sample_number=100)
         # scale from [-1,1] to [0,1]
@@ -144,11 +150,11 @@ class GAN:
             # plot raw pixel data
             pyplot.imshow(generated[i, :, :, 0], cmap='gray_r')
         # save plot to file
-        fig_file = path + 'generated_plot_%04d.png' % (step + 1)
+        fig_file = self.performance_output_path + 'generated_plot_%04d.png' % (step + 1)
         pyplot.savefig(fig_file)
         pyplot.close()
         # save the generator model
-        model_file = path + 'model_%04d.h5' % (step + 1)
+        model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
 
