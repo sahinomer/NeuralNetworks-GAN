@@ -7,7 +7,7 @@ from dataset import Dataset
 from fake_samples import FakeSamples
 from keras import Input, Model
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Reshape, Dropout, Embedding, Multiply
+    Flatten, Reshape, Dropout, Embedding, Multiply, Activation
 from keras.optimizers import Adam
 
 
@@ -37,22 +37,29 @@ def build_generator(latent_size, class_number):
     gen = Dense(3 * 3 * 384, activation='relu')(cls_noise)
     gen = Reshape((3, 3, 384))(gen)
 
-    # upsample to (7, 7, ...)
-    gen = Conv2DTranspose(192, 5, strides=1, padding='valid',
-                          activation='relu',
+    # 3*3*384 -> 7*7*192
+    gen = Conv2DTranspose(filters=192, kernel_size=(5, 5), strides=(1, 1), padding='valid',
                           kernel_initializer='glorot_normal')(gen)
     gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    # upsample to (14, 14, ...)
-    gen = Conv2DTranspose(96, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='relu',
+    # 7*7*192 -> 14*14*96
+    gen = Conv2DTranspose(filters=96, kernel_size=(5, 5), strides=(2, 2), padding='same',
                           kernel_initializer='glorot_normal')(gen)
     gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    # upsample to (28, 28, ...)
-    gen = Conv2DTranspose(1, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='tanh',
+    # 14*14*96 -> 28*28*48
+    gen = Conv2DTranspose(filters=48, kernel_size=(5, 5), strides=(2, 2), padding='same',
                           kernel_initializer='glorot_normal')(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    # 28*28*48 -> 28*28*1
+    gen = Conv2DTranspose(filters=1, kernel_size=(5, 5), strides=(1, 1), padding='same',
+                          kernel_initializer='glorot_normal')(gen)
+
+    gen = Activation('tanh')(gen)
 
     model = Model([noise_input, class_input], gen)
     return model
@@ -61,28 +68,28 @@ def build_generator(latent_size, class_number):
 def build_discriminator(input_shape, class_number):
     input_data = Input(shape=input_shape)
 
-    cnn = Conv2D(32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
+    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(64, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(128, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
+    cnn = Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(256, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
+    cnn = Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
     cnn = Flatten()(cnn)
 
     out = Dense(1, activation='sigmoid')(cnn)
-    cout = Dense(class_number, activation='softmax')(cnn)
+    cls_out = Dense(class_number, activation='softmax')(cnn)
 
-    model = Model(input_data, [out, cout])
+    model = Model(input_data, [out, cls_out])
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
                   loss=['binary_crossentropy', 'sparse_categorical_crossentropy'])
 
