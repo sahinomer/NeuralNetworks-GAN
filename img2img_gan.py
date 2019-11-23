@@ -6,7 +6,7 @@ from matplotlib import pyplot
 from dataset import Dataset
 from keras import Input, Model
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Reshape, Dropout
+    Flatten, Dropout, Activation
 from keras.optimizers import Adam
 
 from noisy_samples import NoisySamples
@@ -29,27 +29,31 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    cnn = Conv2D(32, kernel_size=(3, 3), strides=(2, 2), padding='same')(noisy_input)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-
-    cnn = Conv2D(64, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-
-    cnn = Flatten()(cnn)
-
-    gen = Dense(7 * 7 * 384, activation='relu')(cnn)
-    gen = Reshape((7, 7, 384))(gen)
-
-    # upsample to (14, 14, ...)
-    gen = Conv2DTranspose(192, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='relu',
-                          kernel_initializer='glorot_normal')(gen)
+    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
+                          kernel_initializer='glorot_normal')(noisy_input)
     gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    # upsample to (28, 28, ...)
-    gen = Conv2DTranspose(1, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='tanh',
+    gen = Dense(128)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(256)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(512)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(28*28*1)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv2DTranspose(1, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(gen)
+
+    gen = Activation('tanh')(gen)
 
     model = Model(noisy_input, gen)
     return model
@@ -58,19 +62,19 @@ def build_generator(input_shape):
 def build_discriminator(input_shape):
     input_data = Input(shape=input_shape)
 
-    cnn = Conv2D(32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
+    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(64, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
+    cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(128, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
+    cnn = Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
-    cnn = Conv2D(256, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
+    cnn = Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
     cnn = LeakyReLU(alpha=0.2)(cnn)
     cnn = Dropout(0.4)(cnn)
 
@@ -122,8 +126,7 @@ class Img2ImgGAN:
         trained_samples = 0
 
         for realX, _, realY in dataset.iter_samples(half_batch_size):
-            fakeX, fakeY = self.noisy_samples.denoise_samples(real_samples=realX)
-
+            fakeX, fakeY, _ = self.noisy_samples.denoise_samples(real_samples=realX)
             X = np.vstack([realX, fakeX])
             Y = np.hstack([realY, fakeY])
 
@@ -140,7 +143,10 @@ class Img2ImgGAN:
 
     def performance(self, step, test_data):
         # prepare fake examples
-        generated, _ = self.noisy_samples.denoise_samples(real_samples=test_data)
+        generated, _, noise = self.noisy_samples.denoise_samples(real_samples=test_data)
+
+        noise = (noise + 1) / 2.0
+
         # scale from [-1,1] to [0,1]
         generated = (generated + 1) / 2.0
         # plot images
@@ -155,10 +161,32 @@ class Img2ImgGAN:
         fig_file = self.performance_output_path + 'generated_plot_%04d.png' % (step + 1)
         pyplot.savefig(fig_file)
         pyplot.close()
+
+        fig_file = self.performance_output_path + 'noise_plot_%04d.png' % (step + 1)
+        plot_images(images=noise, path=fig_file)
+
         # save the generator model
         model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
+
+
+def plot_images(images, path=None):
+    images = (images + 1) / 2.0
+    for i in range(100):
+        # define subplot
+        pyplot.subplot(10, 10, 1 + i)
+        # turn off axis
+        pyplot.axis('off')
+        # plot raw pixel data
+        pyplot.imshow(images[i, :, :, 0], cmap='gray_r')
+        # save plot to file
+
+    if path:
+        pyplot.savefig(path)
+        pyplot.close()
+    else:
+        pyplot.show()
 
 
 if __name__ == '__main__':

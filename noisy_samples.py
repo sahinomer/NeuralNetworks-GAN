@@ -52,15 +52,16 @@ class NoisySamples:
         sample_number = len(real_samples)
 
         mean = 0
-        var = 0.1
+        var = 0.01
         sigma = var ** 0.5
         gauss = np.random.normal(mean, sigma, (sample_number, 28, 28, 1))
         gauss = gauss.reshape(sample_number, 28, 28, 1)
         noisy = real_samples + gauss
+        noisy = noisy / noisy.max()
         return noisy
 
     def denoise_samples(self, real_samples):
         noisy_samples = self.add_noise(real_samples)
         denoise = np.zeros((len(real_samples),))
         denoise_data = self.generator.predict(noisy_samples)
-        return denoise_data, denoise
+        return denoise_data, denoise, noisy_samples
