@@ -19,7 +19,7 @@ class FakeSamples:
         return noise
 
     def generate_fake_samples(self, sample_number, set_labels=None):
-        fake = np.zeros((sample_number, ))
+        fake_label = np.zeros((sample_number,))
         if self.class_number > 0:
             noise, labels = self.generate_latent_points(sample_number)
 
@@ -27,9 +27,9 @@ class FakeSamples:
                 labels = set_labels
 
             fake_data = self.generator.predict([noise, labels])
-            return fake_data, labels, fake
+            return fake_data, labels, fake_label
 
         else:
             noise = self.generate_latent_points(sample_number)
             fake_data = self.generator.predict(noise)
-            return fake_data, fake
+            return fake_data, fake_label

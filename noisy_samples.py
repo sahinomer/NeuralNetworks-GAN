@@ -1,67 +1,61 @@
 import numpy as np
 
 
-def noisy(noise_typ, image):
-    if noise_typ == "gauss":
-        row, col, ch = image.shape
+def generate_noise(noise_type, data_shape, samples):
+    sample_number = len(samples)
+    if noise_type == 'gauss':
+        data_shape = (sample_number, data_shape[0], data_shape[1], data_shape[2])
         mean = 0
-        var = 0.1
+        var = 0.01
         sigma = var ** 0.5
-        gauss = np.random.normal(mean, sigma, (row, col, ch))
-        gauss = gauss.reshape(row, col, ch)
-        noisy = image + gauss
+        gauss = np.random.normal(mean, sigma, data_shape)
+        noisy = samples + gauss
+        noisy = noisy / noisy.max()
         return noisy
-    elif noise_typ == "s&p":
-        row, col, ch = image.shape
-        s_vs_p = 0.5
-        amount = 0.004
-        out = np.copy(image)
-        # Salt mode
-        num_salt = np.ceil(amount * image.size * s_vs_p)
-        coords = [np.random.randint(0, i - 1, int(num_salt))
-                  for i in image.shape]
-        out[coords] = 1
 
-        # Pepper mode
-        num_pepper = np.ceil(amount * image.size * (1. - s_vs_p))
-        coords = [np.random.randint(0, i - 1, int(num_pepper))
-                  for i in image.shape]
-        out[coords] = 0
+    elif noise_type == "s&p":
+        size = data_shape[0] * data_shape[1]
+        s_vs_p = 0.5
+        amount = 0.16
+        out = np.copy(samples)
+        # Generate Salt '1' noise
+        num_salt = int(np.ceil(amount * size * s_vs_p))
+        x = np.random.randint(data_shape[0], size=num_salt)
+        y = np.random.randint(data_shape[1], size=num_salt)
+        out[:, x, y, 0] = 1
+        # Generate Pepper '-1' noise
+        num_pepper = int(np.ceil(amount * size * (1. - s_vs_p)))
+        x = np.random.randint(data_shape[0], size=num_pepper)
+        y = np.random.randint(data_shape[1], size=num_pepper)
+        out[:, x, y, 0] = -1
         return out
 
-    elif noise_typ == "poisson":
-        vals = len(np.unique(image))
+    elif noise_type == "poisson":
+        vals = len(np.unique(samples))
         vals = 2 ** np.ceil(np.log2(vals))
-        noisy = np.random.poisson(image * vals) / float(vals)
+        noisy = np.random.poisson(samples * vals) / float(vals)
         return noisy
 
-    elif noise_typ == "speckle":
-        row, col, ch = image.shape
-        gauss = np.random.randn(row, col, ch)
-        gauss = gauss.reshape(row, col, ch)
-        noisy = image + image * gauss
+    elif noise_type == "speckle":
+        gauss = np.random.randn(sample_number, data_shape[0], data_shape[1], data_shape[2]) / 2
+        noisy = samples + gauss
+        noisy = noisy / noisy.max()
         return noisy
 
 
 class NoisySamples:
 
-    def __init__(self, generator):
+    def __init__(self, generator, shape, noise_type):
         self.generator = generator
+        self.shape = shape
+        self.noise_type = noise_type
 
     def add_noise(self, real_samples):
-        sample_number = len(real_samples)
-
-        mean = 0
-        var = 0.01
-        sigma = var ** 0.5
-        gauss = np.random.normal(mean, sigma, (sample_number, 28, 28, 1))
-        gauss = gauss.reshape(sample_number, 28, 28, 1)
-        noisy = real_samples + gauss
-        noisy = noisy / noisy.max()
+        noisy = generate_noise(noise_type=self.noise_type, data_shape=self.shape, samples=real_samples)
         return noisy
 
     def denoise_samples(self, real_samples):
         noisy_samples = self.add_noise(real_samples)
-        denoise = np.zeros((len(real_samples),))
-        denoise_data = self.generator.predict(noisy_samples)
-        return denoise_data, denoise, noisy_samples
+        fake_data = self.generator.predict(noisy_samples)
+        fake_label = np.zeros((len(real_samples),))
+        return fake_data, fake_label, noisy_samples

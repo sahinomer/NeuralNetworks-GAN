@@ -101,7 +101,7 @@ class Img2ImgGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(generator=self.generator)
+        self.noisy_samples = NoisySamples(generator=self.generator, shape=self.data_shape, noise_type='s&p')
 
         self.performance_output_path = 'performance/temp/'
         if not os.path.exists(self.performance_output_path):
@@ -142,28 +142,16 @@ class Img2ImgGAN:
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
     def performance(self, step, test_data):
+
+        sub_test_data = test_data[step*50:(step+1)*50]
+
         # prepare fake examples
-        generated, _, noise = self.noisy_samples.denoise_samples(real_samples=test_data)
+        generated, _, noise = self.noisy_samples.denoise_samples(real_samples=sub_test_data)
 
-        noise = (noise + 1) / 2.0
-
-        # scale from [-1,1] to [0,1]
-        generated = (generated + 1) / 2.0
-        # plot images
-        for i in range(100):
-            # define subplot
-            pyplot.subplot(10, 10, 1 + i)
-            # turn off axis
-            pyplot.axis('off')
-            # plot raw pixel data
-            pyplot.imshow(generated[i, :, :, 0], cmap='gray_r')
         # save plot to file
-        fig_file = self.performance_output_path + 'generated_plot_%04d.png' % (step + 1)
-        pyplot.savefig(fig_file)
-        pyplot.close()
-
-        fig_file = self.performance_output_path + 'noise_plot_%04d.png' % (step + 1)
-        plot_images(images=noise, path=fig_file)
+        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (step + 1)
+        data_triplet = np.concatenate([sub_test_data, noise, generated], axis=2)
+        plot_images(data_triplet, path=fig_file)
 
         # save the generator model
         model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
@@ -172,10 +160,11 @@ class Img2ImgGAN:
 
 
 def plot_images(images, path=None):
+    # scale from [-1,1] to [0,1]
     images = (images + 1) / 2.0
-    for i in range(100):
+    for i in range(50):
         # define subplot
-        pyplot.subplot(10, 10, 1 + i)
+        pyplot.subplot(10, 5, 1 + i)
         # turn off axis
         pyplot.axis('off')
         # plot raw pixel data
@@ -191,6 +180,6 @@ def plot_images(images, path=None):
 
 if __name__ == '__main__':
     dataset = Dataset()
-    dataset.split_test_data(test_size=100)
+    dataset.split_test_data(test_size=500)
     gan = Img2ImgGAN(data_shape=(28, 28, 1))
-    gan.train(dataset=dataset, batch_size=64, epochs=50)
+    gan.train(dataset=dataset, batch_size=64, epochs=10)
