@@ -22,12 +22,12 @@ def generate_noise(noise_type, data_shape, samples):
         num_salt = int(np.ceil(amount * size * s_vs_p))
         x = np.random.randint(data_shape[0], size=num_salt)
         y = np.random.randint(data_shape[1], size=num_salt)
-        out[:, x, y, 0] = 1
+        out[:, x, y, :] = 1
         # Generate Pepper '-1' noise
         num_pepper = int(np.ceil(amount * size * (1. - s_vs_p)))
         x = np.random.randint(data_shape[0], size=num_pepper)
         y = np.random.randint(data_shape[1], size=num_pepper)
-        out[:, x, y, 0] = -1
+        out[:, x, y, :] = -1
         return out
 
     elif noise_type == "poisson":

@@ -50,7 +50,7 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv2DTranspose(1, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(3, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(gen)
 
     gen = Activation('tanh')(gen)
@@ -92,7 +92,7 @@ def build_discriminator(input_shape):
 #######################################################################################################################
 
 
-class Img2ImgGAN:
+class DenoiseGAN:
 
     def __init__(self, data_shape):
         self.data_shape = data_shape
@@ -168,7 +168,7 @@ def plot_images(images, path=None):
         # turn off axis
         pyplot.axis('off')
         # plot raw pixel data
-        pyplot.imshow(images[i, :, :, 0], cmap='gray_r')
+        pyplot.imshow(images[i, :, :, :])
         # save plot to file
 
     if path:
@@ -180,6 +180,6 @@ def plot_images(images, path=None):
 
 if __name__ == '__main__':
     dataset = Dataset()
-    dataset.split_test_data(test_size=500)
-    gan = Img2ImgGAN(data_shape=(28, 28, 1))
-    gan.train(dataset=dataset, batch_size=64, epochs=10)
+    dataset.split_test_data(test_class=0)
+    gan = DenoiseGAN(data_shape=(32, 32, 3))
+    gan.train(dataset=dataset, batch_size=64, epochs=50)

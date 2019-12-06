@@ -2,6 +2,7 @@
 import numpy as np
 from keras.datasets import fashion_mnist
 from keras.datasets import mnist
+from keras.datasets import cifar10
 
 
 class Dataset:
@@ -18,11 +19,12 @@ class Dataset:
 
     def load_dataset(self):
         # load dataset
-        (trainX, trainY), (testX, testY) = fashion_mnist.load_data()
-        x = np.vstack([trainX, testX])
-        y = np.hstack([trainY, testY])
+        (trainX, trainY), (testX, testY) = cifar10.load_data()
+        # (trainX, trainY), (testX, testY) = fashion_mnist.load_data()
+        x = np.concatenate([trainX, testX], axis=0)
+        y = np.concatenate([trainY, testY], axis=0)
         # expand to 3d, e.g. add channels
-        x = np.expand_dims(x, axis=-1)
+        # x = np.expand_dims(x, axis=-1)
         # convert from ints to floats
         x = x.astype('float32')
         # scale from [0,255] to [-1,1]
@@ -41,10 +43,16 @@ class Dataset:
             yield self.data[start:end], self.label[start:end], self.real[start:end]
             start = end
 
-    def split_test_data(self, test_size=100):
-        self.sample_number -= test_size
-        self.test_data = self.data[:test_size]
-        self.data = self.data[test_size:]
-        self.label = self.label[test_size:]
-        self.real = self.real[test_size:]
+    def split_test_data(self, test_class=0):
+        test_indices = np.where(self.label == test_class)[0]
+        test_size = len(test_indices)
+        self.test_data = self.data[test_indices]
 
+        mask = np.ones(self.sample_number, bool)
+        mask[test_indices] = False
+
+        self.data = self.data[mask]
+        self.label = self.label[mask]
+        self.real = self.real[mask]
+
+        self.sample_number -= test_size

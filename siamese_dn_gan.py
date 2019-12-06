@@ -4,9 +4,9 @@ import numpy as np
 from matplotlib import pyplot
 
 from dataset import Dataset
-from keras import Input, Model
+from keras import Input, Model, Sequential
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Dropout, Activation
+    Flatten, Dropout, Activation, subtract
 from keras.optimizers import Adam
 
 from noisy_samples import NoisySamples
@@ -15,10 +15,12 @@ from noisy_samples import NoisySamples
 def build_adversarial(generator_model, discriminator_model):
     discriminator_model.trainable = False
 
-    # generator.output -> discriminator.input
-    gan_output = discriminator_model(generator_model.output)
+    real_input = Input(shape=(32, 32, 3))
 
-    model = Model(generator_model.input, gan_output)
+    # generator.output -> discriminator.input
+    gan_output = discriminator_model([real_input, generator_model.output])
+
+    model = Model([real_input, generator_model.input], gan_output)
 
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
                   loss='binary_crossentropy')
@@ -50,7 +52,7 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv2DTranspose(1, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(3, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(gen)
 
     gen = Activation('tanh')(gen)
@@ -60,29 +62,39 @@ def build_generator(input_shape):
 
 
 def build_discriminator(input_shape):
-    input_data = Input(shape=input_shape)
+    real_input = Input(shape=input_shape)
+    fake_input = Input(shape=input_shape)
 
-    cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-    cnn = Dropout(0.4)(cnn)
+    cnn = Sequential(layers=[
+        Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='same'),
+        LeakyReLU(alpha=0.2),
+        Dropout(0.4),
 
-    cnn = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-    cnn = Dropout(0.4)(cnn)
+        Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same'),
+        LeakyReLU(alpha=0.2),
+        Dropout(0.4),
 
-    cnn = Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), padding='same')(cnn)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-    cnn = Dropout(0.4)(cnn)
+        Conv2D(filters=128, kernel_size=(3, 3), strides=(2, 2), padding='same'),
+        LeakyReLU(alpha=0.2),
+        Dropout(0.4),
 
-    cnn = Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same')(cnn)
-    cnn = LeakyReLU(alpha=0.2)(cnn)
-    cnn = Dropout(0.4)(cnn)
+        Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same'),
+        LeakyReLU(alpha=0.2),
+        Dropout(0.4),
 
-    cnn = Flatten()(cnn)
+        BatchNormalization()
+    ])
 
-    out = Dense(1, activation='sigmoid')(cnn)
+    real_cnn = cnn(real_input)
+    noisy_cnn = cnn(fake_input)
 
-    model = Model(input_data, out)
+    input_diff = subtract([real_cnn, noisy_cnn])
+
+    flatten = Flatten()(input_diff)
+
+    out = Dense(1, activation='sigmoid')(flatten)
+
+    model = Model([real_input, fake_input], out)
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
                   loss='binary_crossentropy')
 
@@ -92,7 +104,7 @@ def build_discriminator(input_shape):
 #######################################################################################################################
 
 
-class Img2ImgGAN:
+class SiameseDenoiseGAN:
 
     def __init__(self, data_shape):
         self.data_shape = data_shape
@@ -127,15 +139,14 @@ class Img2ImgGAN:
 
         for realX, _, realY in dataset.iter_samples(half_batch_size):
             fakeX, fakeY, _ = self.noisy_samples.denoise_samples(real_samples=realX)
-            X = np.vstack([realX, fakeX])
-            Y = np.hstack([realY, fakeY])
 
-            discriminator_loss = self.discriminator.train_on_batch(X, Y)
+            Y = np.ones(shape=(len(realX),))
+            discriminator_loss = self.discriminator.train_on_batch([realX, fakeX], Y)
 
             noisy_input = self.noisy_samples.add_noise(realX)
-            act_real = np.ones(shape=(len(noisy_input),))
+            act_real = np.zeros(shape=(len(noisy_input),))
 
-            gan_loss = self.adversarial.train_on_batch(noisy_input, act_real)
+            gan_loss = self.adversarial.train_on_batch([realX, noisy_input], act_real)
 
             trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
@@ -168,7 +179,7 @@ def plot_images(images, path=None):
         # turn off axis
         pyplot.axis('off')
         # plot raw pixel data
-        pyplot.imshow(images[i, :, :, 0], cmap='gray_r')
+        pyplot.imshow(images[i, :, :, :])
         # save plot to file
 
     if path:
@@ -180,6 +191,6 @@ def plot_images(images, path=None):
 
 if __name__ == '__main__':
     dataset = Dataset()
-    dataset.split_test_data(test_size=500)
-    gan = Img2ImgGAN(data_shape=(28, 28, 1))
-    gan.train(dataset=dataset, batch_size=64, epochs=10)
+    dataset.split_test_data(test_class=0)
+    gan = SiameseDenoiseGAN(data_shape=(32, 32, 3))
+    gan.train(dataset=dataset, batch_size=64, epochs=50)
