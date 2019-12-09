@@ -6,10 +6,40 @@ from matplotlib import pyplot
 from dataset import Dataset
 from keras import Input, Model, Sequential
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Dropout, Activation, subtract
+    Flatten, Dropout, Activation, subtract, dot, multiply, concatenate, RepeatVector, Dot, Lambda, Permute, Concatenate
 from keras.optimizers import Adam
+from keras.backend import expand_dims, softmax
+
+
+from keras import backend as K
 
 from noisy_samples import NoisySamples
+
+
+def euclidean_distance(vects):
+    x, y = vects
+    sum_square = K.sum(K.square(x - y), axis=1, keepdims=True)
+    return K.sqrt(K.maximum(sum_square, K.epsilon()))
+
+
+def eucl_dist_output_shape(shapes):
+    shape1, shape2 = shapes
+    return (shape1[0], 1)
+
+
+def contrastive_loss(y_true, y_pred):
+    """Contrastive loss from Hadsell-et-al.'06
+    http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
+    """
+    margin = 1
+    square_pred = K.square(y_pred)
+    margin_square = K.square(K.maximum(margin - y_pred, 0))
+    return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
+
+
+def unchanged_shape(input_shape):
+    """Function for Lambda layer"""
+    return input_shape
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -23,6 +53,7 @@ def build_adversarial(generator_model, discriminator_model):
     model = Model([real_input, generator_model.input], gan_output)
 
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
+                  # loss=contrastive_loss)
                   loss='binary_crossentropy')
 
     return model
@@ -80,22 +111,30 @@ def build_discriminator(input_shape):
 
         Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same'),
         LeakyReLU(alpha=0.2),
-        Dropout(0.4),
-
-        BatchNormalization()
+        Dropout(0.4)
     ])
 
     real_cnn = cnn(real_input)
-    noisy_cnn = cnn(fake_input)
+    fake_cnn = cnn(fake_input)
 
-    input_diff = subtract([real_cnn, noisy_cnn])
+    real_vector = Flatten()(real_cnn)
+    fake_vector = Flatten()(fake_cnn)
 
-    flatten = Flatten()(input_diff)
+    distance = Lambda(euclidean_distance,
+                      output_shape=eucl_dist_output_shape)([real_vector, fake_vector])
 
-    out = Dense(1, activation='sigmoid')(flatten)
+    # rf_sub = subtract([real_cnn, fake_cnn])
+    # fr_sub = subtract([fake_cnn, real_cnn])
+    # mult_rf = multiply([real_cnn, fake_cnn])
+    # merged = Concatenate()([rf_sub, fr_sub])
+    # merged = Flatten()(merged)
+
+    out = Dense(1, activation='sigmoid')(distance)
 
     model = Model([real_input, fake_input], out)
+
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
+                  # loss=contrastive_loss)
                   loss='binary_crossentropy')
 
     return model
@@ -134,23 +173,25 @@ class SiameseDenoiseGAN:
             self.performance(step=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
-        half_batch_size = int(batch_size / 2)
         trained_samples = 0
 
-        for realX, _, realY in dataset.iter_samples(half_batch_size):
-            fakeX, fakeY, _ = self.noisy_samples.denoise_samples(real_samples=realX)
+        for realX, _, realY in dataset.iter_samples(batch_size):
+            fakeX, fakeY, noisy = self.noisy_samples.denoise_samples(real_samples=realX)
 
             Y = np.ones(shape=(len(realX),))
-            discriminator_loss = self.discriminator.train_on_batch([realX, fakeX], Y)
+            discriminator_loss_rf = self.discriminator.train_on_batch([realX, fakeX], Y)
+
+            Y = np.zeros(shape=(len(realX),))
+            discriminator_loss_rr = self.discriminator.train_on_batch([realX, realX], Y)
 
             noisy_input = self.noisy_samples.add_noise(realX)
             act_real = np.zeros(shape=(len(noisy_input),))
 
             gan_loss = self.adversarial.train_on_batch([realX, noisy_input], act_real)
 
-            trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
-            print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
-                  % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
+            trained_samples = min(trained_samples+batch_size, dataset.sample_number)
+            print('     %5d/%d -> Discriminator Loss: [RvsF: %f, RvsR: %f], Gan Loss: %f'
+                  % (trained_samples, dataset.sample_number, discriminator_loss_rf, discriminator_loss_rr, gan_loss))
 
     def performance(self, step, test_data):
 
