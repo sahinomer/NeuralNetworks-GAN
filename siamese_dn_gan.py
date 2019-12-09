@@ -128,7 +128,7 @@ def build_discriminator(input_shape):
 
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
                   loss='binary_crossentropy')
-                  # loss = 'mean_squared_error')
+                  # loss='mean_squared_error')
                   # loss=contrastive_loss)
 
     return model
@@ -176,7 +176,7 @@ class SiameseDenoiseGAN:
             discriminator_loss_rf = self.discriminator.train_on_batch([realX, fakeX], Y)
 
             Y = np.zeros(shape=(len(realX),))
-            discriminator_loss_rr = self.discriminator.train_on_batch([fakeX, noisy], Y)
+            discriminator_loss_fn = self.discriminator.train_on_batch([fakeX, noisy], Y)
 
             noisy_input = self.noisy_samples.add_noise(realX)
             act_real = np.zeros(shape=(len(noisy_input),))
@@ -184,8 +184,8 @@ class SiameseDenoiseGAN:
             gan_loss = self.adversarial.train_on_batch([realX, noisy_input], act_real)
 
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
-            print('     %5d/%d -> Discriminator Loss: [RvsF: %f, RvsR: %f], Gan Loss: %f'
-                  % (trained_samples, dataset.sample_number, discriminator_loss_rf, discriminator_loss_rr, gan_loss))
+            print('     %5d/%d -> Discriminator Loss: [RvsF: %f, FvsN: %f], Gan Loss: %f'
+                  % (trained_samples, dataset.sample_number, discriminator_loss_rf, discriminator_loss_fn, gan_loss))
 
     def performance(self, step, test_data):
 
