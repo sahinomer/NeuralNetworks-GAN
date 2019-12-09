@@ -6,10 +6,8 @@ from matplotlib import pyplot
 from dataset import Dataset
 from keras import Input, Model, Sequential
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Dropout, Activation, subtract, dot, multiply, concatenate, RepeatVector, Dot, Lambda, Permute, Concatenate
+    Flatten, Dropout, Activation, Lambda
 from keras.optimizers import Adam
-from keras.backend import expand_dims, softmax
-
 
 from keras import backend as K
 
@@ -27,28 +25,28 @@ def eucl_dist_output_shape(shapes):
     return (shape1[0], 1)
 
 
-def contrastive_loss(y_true, y_pred):
-    """Contrastive loss from Hadsell-et-al.'06
-    http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
-    """
-    margin = 1
-    square_pred = K.square(y_pred)
-    margin_square = K.square(K.maximum(margin - y_pred, 0))
-    return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
-
-
-def unchanged_shape(input_shape):
-    """Function for Lambda layer"""
-    return input_shape
+# def contrastive_loss(y_true, y_pred):
+#     """Contrastive loss from Hadsell-et-al.'06
+#     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
+#     """
+#     margin = 1
+#     square_pred = K.square(y_pred)
+#     margin_square = K.square(K.maximum(margin - y_pred, 0))
+#     return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
+#
+#
+# def unchanged_shape(input_shape):
+#     """Function for Lambda layer"""
+#     return input_shape
 
 
 def build_adversarial(generator_model, discriminator_model):
     discriminator_model.trainable = False
 
-    real_input = Input(shape=(32, 32, 3))
+    real_input = Input(shape=discriminator_model.input_shape[0][1:])
+    fake_input = generator_model.output  # generator.output -> discriminator.input
 
-    # generator.output -> discriminator.input
-    gan_output = discriminator_model([real_input, generator_model.output])
+    gan_output = discriminator_model([real_input, fake_input])
 
     model = Model([real_input, generator_model.input], gan_output)
 
@@ -122,12 +120,6 @@ def build_discriminator(input_shape):
 
     distance = Lambda(euclidean_distance,
                       output_shape=eucl_dist_output_shape)([real_vector, fake_vector])
-
-    # rf_sub = subtract([real_cnn, fake_cnn])
-    # fr_sub = subtract([fake_cnn, real_cnn])
-    # mult_rf = multiply([real_cnn, fake_cnn])
-    # merged = Concatenate()([rf_sub, fr_sub])
-    # merged = Flatten()(merged)
 
     out = Dense(1, activation='sigmoid')(distance)
 
