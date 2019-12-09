@@ -51,8 +51,9 @@ def build_adversarial(generator_model, discriminator_model):
     model = Model([real_input, generator_model.input], gan_output)
 
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
-                  # loss=contrastive_loss)
                   loss='binary_crossentropy')
+                  # loss='mean_squared_error')
+                  # loss=contrastive_loss)
 
     return model
 
@@ -126,8 +127,9 @@ def build_discriminator(input_shape):
     model = Model([real_input, fake_input], out)
 
     model.compile(optimizer=Adam(lr=0.0002, beta_1=0.5),
-                  # loss=contrastive_loss)
                   loss='binary_crossentropy')
+                  # loss = 'mean_squared_error')
+                  # loss=contrastive_loss)
 
     return model
 
@@ -174,7 +176,7 @@ class SiameseDenoiseGAN:
             discriminator_loss_rf = self.discriminator.train_on_batch([realX, fakeX], Y)
 
             Y = np.zeros(shape=(len(realX),))
-            discriminator_loss_rr = self.discriminator.train_on_batch([realX, realX], Y)
+            discriminator_loss_rr = self.discriminator.train_on_batch([fakeX, noisy], Y)
 
             noisy_input = self.noisy_samples.add_noise(realX)
             act_real = np.zeros(shape=(len(noisy_input),))
