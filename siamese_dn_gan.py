@@ -189,7 +189,7 @@ class SiameseDenoiseGAN:
 
     def performance(self, step, test_data):
 
-        sub_test_data = test_data[step*50:(step+1)*50]
+        sub_test_data = test_data[step*10:(step+1)*10]
 
         # prepare fake examples
         generated, _, noise = self.noisy_samples.denoise_samples(real_samples=sub_test_data)
@@ -208,9 +208,9 @@ class SiameseDenoiseGAN:
 def plot_images(images, path=None):
     # scale from [-1,1] to [0,1]
     images = (images + 1) / 2.0
-    for i in range(50):
+    for i in range(10):
         # define subplot
-        pyplot.subplot(10, 5, 1 + i)
+        pyplot.subplot(5, 2, 1 + i)
         # turn off axis
         pyplot.axis('off')
         # plot raw pixel data
@@ -226,6 +226,6 @@ def plot_images(images, path=None):
 
 if __name__ == '__main__':
     dataset = Dataset()
-    dataset.split_test_data(test_class=0)
-    gan = SiameseDenoiseGAN(data_shape=(32, 32, 3))
+    dataset.split_test_data(test_sample=1000)
+    gan = SiameseDenoiseGAN(data_shape=(128, 128, 3))
     gan.train(dataset=dataset, batch_size=64, epochs=50)

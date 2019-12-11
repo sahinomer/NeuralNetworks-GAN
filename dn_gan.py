@@ -180,6 +180,6 @@ def plot_images(images, path=None):
 
 if __name__ == '__main__':
     dataset = Dataset()
-    dataset.split_test_data(test_class=0)
+    dataset.split_test_data(test_sample=0)
     gan = DenoiseGAN(data_shape=(32, 32, 3))
     gan.train(dataset=dataset, batch_size=64, epochs=50)

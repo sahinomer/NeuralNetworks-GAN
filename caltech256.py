@@ -15,6 +15,7 @@ def load_data(width=128, height=128, verbose=False):
 
     num_samples = 30607
     image_data = np.empty((num_samples, width, height, 3), dtype='uint8')
+    image_label = np.empty((num_samples,), dtype='uint8')
 
     category_list = os.listdir(path)
     sample = 0
@@ -31,16 +32,18 @@ def load_data(width=128, height=128, verbose=False):
                 img = load_img(category_path + image)
                 img = img_to_array(img)
                 img = resize(img, (width, height))
-                image_data[sample, :, :, :] = img
 
+                image_data[sample, :, :, :] = img
+                image_label[sample] = int(category.split('.')[0])
                 sample += 1
 
     np.random.shuffle(image_data)
 
-    return image_data
+    return image_data, image_label
 
 
 if __name__ == '__main__':
     caltech256images = load_data(verbose=True)
-    print(caltech256images.shape)
+    print(caltech256images[0].shape)
+    print(caltech256images[1].shape)
 

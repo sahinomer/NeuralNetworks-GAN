@@ -6,7 +6,7 @@ def generate_noise(noise_type, data_shape, samples):
     if noise_type == 'gauss':
         data_shape = (sample_number, data_shape[0], data_shape[1], data_shape[2])
         mean = 0
-        var = 0.01
+        var = 0.04
         sigma = var ** 0.5
         gauss = np.random.normal(mean, sigma, data_shape)
         noisy = samples + gauss

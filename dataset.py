@@ -3,6 +3,7 @@ import numpy as np
 from keras.datasets import fashion_mnist
 from keras.datasets import mnist
 from keras.datasets import cifar10
+import caltech256
 
 
 class Dataset:
@@ -19,12 +20,15 @@ class Dataset:
 
     def load_dataset(self):
         # load dataset
-        (trainX, trainY), (testX, testY) = cifar10.load_data()
+        # (trainX, trainY), (testX, testY) = cifar10.load_data()
         # (trainX, trainY), (testX, testY) = fashion_mnist.load_data()
-        x = np.concatenate([trainX, testX], axis=0)
-        y = np.concatenate([trainY, testY], axis=0)
+        # x = np.concatenate([trainX, testX], axis=0)
+        # y = np.concatenate([trainY, testY], axis=0)
         # expand to 3d, e.g. add channels
         # x = np.expand_dims(x, axis=-1)
+
+        x, y = caltech256.load_data(verbose=True)
+
         # convert from ints to floats
         x = x.astype('float32')
         # scale from [0,255] to [-1,1]
@@ -43,8 +47,14 @@ class Dataset:
             yield self.data[start:end], self.label[start:end], self.real[start:end]
             start = end
 
-    def split_test_data(self, test_class=0):
-        test_indices = np.where(self.label == test_class)[0]
+    def split_test_data(self, test_sample=-1):
+
+        if test_sample > 256:  # more than class number
+            test_indices = np.random.randint(0, self.sample_number, size=test_sample)
+
+        else:
+            test_indices = np.where(self.label == test_sample)[0]
+
         test_size = len(test_indices)
         self.test_data = self.data[test_indices]
 
