@@ -8,7 +8,7 @@ import caltech256
 
 class Dataset:
 
-    def __init__(self):
+    def __init__(self, dataset='cifar10'):
         self.data = None
         self.label = None
         self.real = None
@@ -16,18 +16,20 @@ class Dataset:
         self.sample_number = None
         self.test_data = None
 
-        self.load_dataset()
+        self.load_dataset(dataset=dataset)
 
-    def load_dataset(self):
-        # load dataset
-        # (trainX, trainY), (testX, testY) = cifar10.load_data()
-        # (trainX, trainY), (testX, testY) = fashion_mnist.load_data()
-        # x = np.concatenate([trainX, testX], axis=0)
-        # y = np.concatenate([trainY, testY], axis=0)
-        # expand to 3d, e.g. add channels
-        # x = np.expand_dims(x, axis=-1)
+    def load_dataset(self, dataset='cifar10'):
 
-        x, y = caltech256.load_data(verbose=True)
+        if dataset == 'cifar10':
+            (trainX, trainY), (testX, testY) = cifar10.load_data()
+            x = np.concatenate([trainX, testX], axis=0)
+            y = np.concatenate([trainY, testY], axis=0)
+
+        elif dataset == 'caltech256':
+            x, y = caltech256.load_data(width=64, height=64, verbose=True)
+
+        else:
+            raise Exception('Unknown dataset!')
 
         # convert from ints to floats
         x = x.astype('float32')

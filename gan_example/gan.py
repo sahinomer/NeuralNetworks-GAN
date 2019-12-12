@@ -7,8 +7,10 @@ from dataset import Dataset
 from fake_samples import FakeSamples
 from keras import Input, Model
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Reshape, Dropout
+    Flatten, Reshape, Dropout, Activation
 from keras.optimizers import Adam
+
+from keras.initializers import RandomNormal
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -31,22 +33,29 @@ def build_generator(latent_size):
     gen = Dense(3 * 3 * 384, activation='relu')(noise_input)
     gen = Reshape((3, 3, 384))(gen)
 
-    # upsample to (7, 7, ...)
-    gen = Conv2DTranspose(192, 5, strides=1, padding='valid',
-                          activation='relu',
-                          kernel_initializer='glorot_normal')(gen)
+    # 3*3*384 -> 7*7*192
+    gen = Conv2DTranspose(filters=192, kernel_size=(5, 5), strides=(1, 1), padding='valid',
+                          kernel_initializer=RandomNormal(stddev=0.02))(gen)
     gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    # upsample to (14, 14, ...)
-    gen = Conv2DTranspose(96, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='relu',
-                          kernel_initializer='glorot_normal')(gen)
+    # 7*7*192 -> 14*14*96
+    gen = Conv2DTranspose(filters=96, kernel_size=(5, 5), strides=(2, 2), padding='same',
+                          kernel_initializer=RandomNormal(stddev=0.02))(gen)
     gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    # upsample to (28, 28, ...)
-    gen = Conv2DTranspose(1, kernel_size=(5, 5), strides=(2, 2), padding='same',
-                          activation='tanh',
-                          kernel_initializer='glorot_normal')(gen)
+    # 14*14*96 -> 28*28*48
+    gen = Conv2DTranspose(filters=48, kernel_size=(5, 5), strides=(2, 2), padding='same',
+                          kernel_initializer=RandomNormal(stddev=0.02))(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    # 28*28*48 -> 28*28*1
+    gen = Conv2DTranspose(filters=1, kernel_size=(5, 5), strides=(1, 1), padding='same',
+                          kernel_initializer=RandomNormal(stddev=0.02))(gen)
+
+    gen = Activation('tanh')(gen)
 
     model = Model(noise_input, gen)
     return model

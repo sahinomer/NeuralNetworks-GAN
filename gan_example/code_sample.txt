@@ -1,0 +1,37 @@
+    # x = K.l2_normalize(real_cnn, axis=-1)
+    # y = K.l2_normalize(fake_cnn, axis=-1)
+    # dist = -K.mean(x * y, axis=-1, keepdims=True)
+
+    # sim = dot([real_cnn, fake_cnn], axes=-1, normalize=True)
+    # sim = Dot(axes=-1)([real_cnn, fake_cnn])
+    # flatten = Flatten()(merged)
+
+    # dense = Dense(128, activation='relu')(flatten)
+    # dense = BatchNormalization()(dense)
+    # dense = Dropout(0.4)(dense)
+
+    # out = Dense(1, activation='sigmoid')(flatten)
+
+    # similarity = Dot(axes=-1)([real_cnn, fake_cnn])
+
+
+
+
+    # real_vector = Flatten()(real_cnn)
+    # fake_vector = Flatten()(fake_cnn)
+
+    # distance = Lambda(euclidean_distance,
+    #                   output_shape=eucl_dist_output_shape)([real_cnn, fake_cnn])
+
+
+    
+    # similarity = Flatten()(merged)
+
+    # out = Dense(1, activation='sigmoid')(similarity)
+
+
+    # rf_sub = subtract([real_cnn, fake_cnn])
+    # fr_sub = subtract([fake_cnn, real_cnn])
+    # mult_rf = multiply([real_cnn, fake_cnn])
+    # merged = Concatenate()([rf_sub, fr_sub])
+    # merged = Flatten()(merged)
