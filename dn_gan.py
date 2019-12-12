@@ -143,7 +143,7 @@ class DenoiseGAN:
 
     def performance(self, step, test_data):
 
-        sub_test_data = test_data[step*50:(step+1)*50]
+        sub_test_data = test_data[step*10:(step+1)*10]
 
         # prepare fake examples
         generated, _, noise = self.noisy_samples.denoise_samples(real_samples=sub_test_data)
@@ -179,7 +179,7 @@ def plot_images(images, path=None):
 
 
 if __name__ == '__main__':
-    dataset = Dataset()
-    dataset.split_test_data(test_sample=400)
-    gan = DenoiseGAN(data_shape=(64, 64, 3))
+    dataset = Dataset(dataset='cifar10')
+    dataset.split_test_data(test_sample=0)
+    gan = DenoiseGAN(data_shape=dataset.data_shape)
     gan.train(dataset=dataset, batch_size=32, epochs=50)

@@ -1,7 +1,5 @@
 
 import numpy as np
-from keras.datasets import fashion_mnist
-from keras.datasets import mnist
 from keras.datasets import cifar10
 import caltech256
 

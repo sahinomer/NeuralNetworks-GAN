@@ -28,8 +28,8 @@ def load_data(width=128, height=128, verbose=False):
         category_path = path + '\\' + category + '\\'
         image_list = os.listdir(category_path)
 
-        for image in image_list[:100]:
-            if os.path.isfile(category_path + image):
+        for image in image_list:
+            if image.lower().endswith('.jpg'):
                 img = load_img(category_path + image)
                 img = img_to_array(img)
                 img = resize(img, (width, height))

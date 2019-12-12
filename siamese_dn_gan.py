@@ -14,8 +14,10 @@ from keras import backend as K
 from noisy_samples import NoisySamples
 
 
-def euclidean_distance(vects):
-    x, y = vects
+def euclidean_distance(vectors):
+    x, y = vectors
+    x = K.l2_normalize(x, axis=-1)
+    y = K.l2_normalize(y, axis=-1)
     sum_square = K.sum(K.square(x - y), axis=1, keepdims=True)
     return K.sqrt(K.maximum(sum_square, K.epsilon()))
 
@@ -208,9 +210,9 @@ class SiameseDenoiseGAN:
 def plot_images(images, path=None):
     # scale from [-1,1] to [0,1]
     images = (images + 1) / 2.0
-    for i in range(50):
+    for i in range(10):
         # define subplot
-        pyplot.subplot(10, 5, 1 + i)
+        pyplot.subplot(5, 2, 1 + i)
         # turn off axis
         pyplot.axis('off')
         # plot raw pixel data
@@ -225,7 +227,7 @@ def plot_images(images, path=None):
 
 
 if __name__ == '__main__':
-    dataset = Dataset(dataset='cifar10')
-    dataset.split_test_data(test_sample=0)
+    dataset = Dataset(dataset='caltech256')
+    dataset.split_test_data(test_sample=500)
     gan = SiameseDenoiseGAN(data_shape=dataset.data_shape)
     gan.train(dataset=dataset, batch_size=32, epochs=50)
