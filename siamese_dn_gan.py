@@ -1,8 +1,8 @@
+import os
 from datetime import datetime
 
 import numpy as np
 
-from dataset import Dataset
 from keras import Input, Model, Sequential
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
     Flatten, Dropout, Activation, Lambda
@@ -11,7 +11,7 @@ from keras.optimizers import Adam
 from keras import backend as K
 
 from noisy_samples import NoisySamples
-from utils import performance
+from utils import measure_and_plot
 
 
 def euclidean_distance(vectors):
@@ -25,21 +25,6 @@ def euclidean_distance(vectors):
 def eucl_dist_output_shape(shapes):
     shape1, shape2 = shapes
     return (shape1[0], 1)
-
-
-# def contrastive_loss(y_true, y_pred):
-#     """Contrastive loss from Hadsell-et-al.'06
-#     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
-#     """
-#     margin = 1
-#     square_pred = K.square(y_pred)
-#     margin_square = K.square(K.maximum(margin - y_pred, 0))
-#     return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
-#
-#
-# def unchanged_shape(input_shape):
-#     """Function for Lambda layer"""
-#     return input_shape
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -164,7 +149,7 @@ class SiameseDenoiseGAN:
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e, epochs))
             self.single_epoch(dataset, batch_size)
-            performance(model=self, epoch=e, test_data=dataset.test_data)
+            self.performance(epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
         trained_samples = 0
@@ -190,3 +175,24 @@ class SiameseDenoiseGAN:
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: [RvsF: %f, FvsN: %f], Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss_rf, discriminator_loss_fn, gan_loss))
+
+    def performance(self, epoch, test_data):
+
+        test_data = test_data[epoch * 100:(epoch + 1) * 100]
+
+        # generate fake examples
+        noisy = self.noisy_samples.add_noise(real_samples=test_data)
+        generated = self.generator.predict(noisy)
+
+        path = self.performance_output_path + '/epoch-%04d' % (epoch + 1)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        # save the generator model
+        model_file = path + '/model_%04d.h5' % (epoch + 1)
+        self.generator.save(model_file)
+
+        fig_file = path + '/plot_%04d' % ((epoch + 1))
+        measure_and_plot(original_images=test_data, noisy_images=noisy, generated_images=generated, path=fig_file)
+
+        print('>Saved model and figures to', path)

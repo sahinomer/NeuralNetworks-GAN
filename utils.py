@@ -6,26 +6,26 @@ from matplotlib import pyplot
 from skimage.measure import compare_ssim
 
 
-def performance(model, epoch, test_data):
-
-    test_data = test_data[epoch * 100:(epoch + 1) * 100]
-
-    # generate fake examples
-    noisy = model.noisy_samples.add_noise(real_samples=test_data)
-    generated = model.generator.predict(noisy)
-
-    path = model.performance_output_path + '/epoch-%04d' % (epoch + 1)
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    # save the generator model
-    model_file = path + '/model_%04d.h5' % (epoch + 1)
-    model.generator.save(model_file)
-
-    fig_file = path + '/plot_%04d' % ((epoch + 1))
-    measure_and_plot(original_images=test_data, noisy_images=noisy, generated_images=generated, path=fig_file)
-
-    print('>Saved model and figures to', path)
+# def performance(model, epoch, test_data):
+#
+#     test_data = test_data[epoch * 100:(epoch + 1) * 100]
+#
+#     # generate fake examples
+#     noisy = model.noisy_samples.add_noise(real_samples=test_data)
+#     generated = model.generator.predict(noisy)
+#
+#     path = model.performance_output_path + '/epoch-%04d' % (epoch + 1)
+#     if not os.path.exists(path):
+#         os.makedirs(path)
+#
+#     # save the generator model
+#     model_file = path + '/model_%04d.h5' % (epoch + 1)
+#     model.generator.save(model_file)
+#
+#     fig_file = path + '/plot_%04d' % ((epoch + 1))
+#     measure_and_plot(original_images=test_data, noisy_images=noisy, generated_images=generated, path=fig_file)
+#
+#     print('>Saved model and figures to', path)
 
 
 def measure_and_plot(original_images, noisy_images, generated_images, path=None):

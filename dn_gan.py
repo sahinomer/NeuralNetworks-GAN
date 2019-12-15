@@ -3,14 +3,13 @@ from datetime import datetime
 
 import numpy as np
 
-from dataset import Dataset
 from keras import Input, Model
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
     Flatten, Dropout, Activation
 from keras.optimizers import Adam
 
 from noisy_samples import NoisySamples
-from utils import performance
+from utils import measure_and_plot
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -118,7 +117,7 @@ class DenoiseGAN:
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e, epochs))
             self.single_epoch(dataset, batch_size)
-            performance(model=self, epoch=e, test_data=dataset.test_data)
+            self.performance(epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
         trained_samples = 0
@@ -142,3 +141,24 @@ class DenoiseGAN:
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
+
+    def performance(self, epoch, test_data):
+
+        test_data = test_data[epoch * 100:(epoch + 1) * 100]
+
+        # generate fake examples
+        noisy = self.noisy_samples.add_noise(real_samples=test_data)
+        generated = self.generator.predict(noisy)
+
+        path = self.performance_output_path + '/epoch-%04d' % (epoch + 1)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        # save the generator model
+        model_file = path + '/model_%04d.h5' % (epoch + 1)
+        self.generator.save(model_file)
+
+        fig_file = path + '/plot_%04d' % ((epoch + 1))
+        measure_and_plot(original_images=test_data, noisy_images=noisy, generated_images=generated, path=fig_file)
+
+        print('>Saved model and figures to', path)
