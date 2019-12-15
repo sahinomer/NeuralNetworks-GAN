@@ -5,7 +5,7 @@ import numpy as np
 
 from keras import Input, Model, Sequential
 from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
-    Flatten, Dropout, Activation, Lambda
+    Flatten, Dropout, Activation, Lambda, Concatenate, UpSampling2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import Adam
 
 from keras import backend as K
@@ -48,8 +48,8 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                          kernel_initializer='glorot_normal')(noisy_input)
+    gen = Conv2D(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
+                 kernel_initializer='glorot_normal')(noisy_input)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -69,8 +69,8 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv2DTranspose(3, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                          kernel_initializer='glorot_normal')(gen)
+    gen = Conv2D(3, kernel_size=(3, 3), strides=(1, 1), padding='same',
+                 kernel_initializer='glorot_normal')(gen)
 
     gen = Activation('tanh')(gen)
 
