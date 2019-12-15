@@ -14,7 +14,7 @@ def load_data(width=128, height=128, verbose=False):
     try:
         image_data = np.load(file='caltech256_' + img_res + '.images.npy')
         image_label = np.load(file='caltech256_' + img_res + '.labels.npy')
-        image_data, image_label = shuffle(image_data, image_label, random_state=0)
+        # image_data, image_label = shuffle(image_data, image_label, random_state=0)
         return image_data, image_label
     except IOError:
         print('Cached images not found! Loading images...')
@@ -50,11 +50,12 @@ def load_data(width=128, height=128, verbose=False):
     image_data = image_data[:sample, :, :, :]
     image_label = image_label[:sample]
 
+    image_data, image_label = shuffle(image_data, image_label, random_state=0)
+
     # Save images and labels to cache file
     np.save(file='caltech256_' + img_res + '.images', arr=image_data)
     np.save(file='caltech256_' + img_res + '.labels', arr=image_label)
 
-    image_data, image_label = shuffle(image_data, image_label, random_state=0)
     return image_data, image_label
 
 

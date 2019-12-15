@@ -47,8 +47,9 @@ class Dataset:
 
     def split_test_data(self, test_sample=-1):
 
-        if test_sample > 256:  # more than class number
-            test_indices = np.random.randint(0, self.sample_number, size=test_sample)
+        if test_sample > 10:  # more than class number
+            # test_indices = np.random.randint(0, self.sample_number, size=test_sample)
+            test_indices = np.arange(test_sample)
 
         else:
             test_indices = np.where(self.label == test_sample)[0]

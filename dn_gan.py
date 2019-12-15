@@ -1,7 +1,7 @@
 import os
+from datetime import datetime
 
 import numpy as np
-from matplotlib import pyplot
 
 from dataset import Dataset
 from keras import Input, Model
@@ -10,6 +10,7 @@ from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormali
 from keras.optimizers import Adam
 
 from noisy_samples import NoisySamples
+from utils import performance
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -29,12 +30,8 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(noisy_input)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -46,7 +43,11 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Dense(64)(gen)
+    gen = Dense(512)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -103,9 +104,7 @@ class DenoiseGAN:
         self.define_gan()
         self.noisy_samples = NoisySamples(shape=self.data_shape, noise_type='s&p')
 
-        self.performance_output_path = 'performance/temp/'
-        if not os.path.exists(self.performance_output_path):
-            os.makedirs(self.performance_output_path)
+        self.performance_output_path = 'performance/siamese_dn_gan_' + str(datetime.now().date())
 
     def define_gan(self):
         self.generator = build_generator(input_shape=self.data_shape)
@@ -119,7 +118,7 @@ class DenoiseGAN:
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e, epochs))
             self.single_epoch(dataset, batch_size)
-            self.performance(epoch=e, test_data=dataset.test_data)
+            performance(model=self, epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
         half_batch_size = int(batch_size / 2)
@@ -145,46 +144,9 @@ class DenoiseGAN:
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
-    def performance(self, epoch, test_data):
-
-        sub_test_data = test_data[epoch * 10:(epoch + 1) * 10]
-
-        # prepare fake examples
-        noisy = self.noisy_samples.add_noise(real_samples=sub_test_data)
-        generated = self.generator.predict(noisy)
-
-        # save plot to file
-        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (epoch + 1)
-        data_triplet = np.concatenate([sub_test_data, noisy, generated], axis=2)
-        plot_images(data_triplet, path=fig_file)
-
-        # save the generator model
-        model_file = self.performance_output_path + 'model_%04d.h5' % (epoch + 1)
-        self.generator.save(model_file)
-        print('>Saved: %s and %s' % (fig_file, model_file))
-
-
-def plot_images(images, path=None):
-    # scale from [-1,1] to [0,1]
-    images = (images + 1) / 2.0
-    for i in range(10):
-        # define subplot
-        pyplot.subplot(5, 2, 1 + i)
-        # turn off axis
-        pyplot.axis('off')
-        # plot raw pixel data
-        pyplot.imshow(images[i, :, :, :])
-        # save plot to file
-
-    if path:
-        pyplot.savefig(path)
-        pyplot.close()
-    else:
-        pyplot.show()
-
 
 if __name__ == '__main__':
-    dataset = Dataset(dataset='cifar10')
-    dataset.split_test_data(test_sample=0)
+    dataset = Dataset(dataset='caltech256')
+    dataset.split_test_data(test_sample=100)
     gan = DenoiseGAN(data_shape=dataset.data_shape)
-    gan.train(dataset=dataset, batch_size=32, epochs=50)
+    gan.train(dataset=dataset, batch_size=32, epochs=20)
