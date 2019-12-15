@@ -63,8 +63,12 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    gen = Conv2DTranspose(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(noisy_input)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -76,11 +80,7 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Dense(512)(gen)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Dense(128)(gen)
+    gen = Dense(64)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -193,7 +193,7 @@ class SiameseDenoiseGAN:
 
 
 if __name__ == '__main__':
-    dataset = Dataset(dataset='caltech256')
+    dataset = Dataset(dataset='cifar10')
     dataset.split_test_data(test_sample=100)
     gan = SiameseDenoiseGAN(data_shape=dataset.data_shape)
-    gan.train(dataset=dataset, batch_size=32, epochs=20)
+    gan.train(dataset=dataset, batch_size=64, epochs=20)

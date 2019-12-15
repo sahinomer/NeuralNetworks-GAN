@@ -30,8 +30,12 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    gen = Conv2DTranspose(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(noisy_input)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -43,11 +47,7 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Dense(512)(gen)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Dense(128)(gen)
+    gen = Dense(64)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -104,7 +104,7 @@ class DenoiseGAN:
         self.define_gan()
         self.noisy_samples = NoisySamples(shape=self.data_shape, noise_type='s&p')
 
-        self.performance_output_path = 'performance/siamese_dn_gan_' + str(datetime.now().date())
+        self.performance_output_path = 'performance/dn_gan_' + str(datetime.now().date())
 
     def define_gan(self):
         self.generator = build_generator(input_shape=self.data_shape)
@@ -121,7 +121,6 @@ class DenoiseGAN:
             performance(model=self, epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
-        half_batch_size = int(batch_size / 2)
         trained_samples = 0
 
         for realX, _ in dataset.iter_samples(batch_size):
@@ -140,13 +139,13 @@ class DenoiseGAN:
 
             gan_loss = self.adversarial.train_on_batch(noisy, act_real)
 
-            trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
+            trained_samples = min(trained_samples+batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
 
 if __name__ == '__main__':
-    dataset = Dataset(dataset='caltech256')
+    dataset = Dataset(dataset='cifar10')
     dataset.split_test_data(test_sample=100)
     gan = DenoiseGAN(data_shape=dataset.data_shape)
-    gan.train(dataset=dataset, batch_size=32, epochs=20)
+    gan.train(dataset=dataset, batch_size=64, epochs=20)

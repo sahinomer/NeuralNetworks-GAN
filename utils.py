@@ -49,5 +49,4 @@ def measure_and_plot(original_images, noisy_images, generated_images, path=None)
 
         img_path = path + '-%04d.png' % (i+1)
         pyplot.savefig(img_path)
-
-    pyplot.close()
+        pyplot.close()
