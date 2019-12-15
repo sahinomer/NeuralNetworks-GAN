@@ -9,7 +9,6 @@ class Dataset:
     def __init__(self, dataset='cifar10'):
         self.data = None
         self.label = None
-        self.real = None
         self.data_shape = None
         self.sample_number = None
         self.test_data = None
@@ -36,7 +35,6 @@ class Dataset:
 
         self.data = x
         self.label = y
-        self.real = np.ones(shape=(len(x), ), dtype=np.int)
         self.data_shape = x[0].shape
         self.sample_number = len(x)
 
@@ -44,7 +42,7 @@ class Dataset:
         start = 0
         while start < self.sample_number:
             end = start + sample_number
-            yield self.data[start:end], self.label[start:end], self.real[start:end]
+            yield self.data[start:end], self.label[start:end]
             start = end
 
     def split_test_data(self, test_sample=-1):
@@ -63,6 +61,5 @@ class Dataset:
 
         self.data = self.data[mask]
         self.label = self.label[mask]
-        self.real = self.real[mask]
 
         self.sample_number -= test_size

@@ -63,12 +63,8 @@ def build_adversarial(generator_model, discriminator_model):
 def build_generator(input_shape):
     noisy_input = Input(shape=input_shape)
 
-    gen = Conv2DTranspose(64, kernel_size=(3, 3), strides=(1, 1), padding='same',
+    gen = Conv2DTranspose(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
                           kernel_initializer='glorot_normal')(noisy_input)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -80,7 +76,11 @@ def build_generator(input_shape):
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Dense(64)(gen)
+    gen = Dense(512)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(128)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -148,7 +148,7 @@ class SiameseDenoiseGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(generator=self.generator, shape=self.data_shape, noise_type='s&p')
+        self.noisy_samples = NoisySamples(shape=self.data_shape, noise_type='s&p')
 
         self.performance_output_path = 'performance/temp/'
         if not os.path.exists(self.performance_output_path):
@@ -166,43 +166,48 @@ class SiameseDenoiseGAN:
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e, epochs))
             self.single_epoch(dataset, batch_size)
-            self.performance(step=e, test_data=dataset.test_data)
+            self.performance(epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
         trained_samples = 0
 
-        for realX, _, realY in dataset.iter_samples(batch_size):
-            fakeX, fakeY, noisy = self.noisy_samples.denoise_samples(real_samples=realX)
+        for realX, _ in dataset.iter_samples(batch_size):
+            noisy = self.noisy_samples.add_noise(real_samples=realX)
+            fakeX = self.generator.predict(noisy)
 
+            # train discriminator
             Y = np.ones(shape=(len(realX),))
             discriminator_loss_rf = self.discriminator.train_on_batch([realX, fakeX], Y)
 
             Y = np.zeros(shape=(len(realX),))
             discriminator_loss_fn = self.discriminator.train_on_batch([fakeX, noisy], Y)
 
-            noisy_input = self.noisy_samples.add_noise(realX)
-            act_real = np.zeros(shape=(len(noisy_input),))
+            # add noise to images
+            noisy = self.noisy_samples.add_noise(realX)
+            act_real = np.zeros(shape=(len(noisy),))
 
-            gan_loss = self.adversarial.train_on_batch([realX, noisy_input], act_real)
+            # train adversarial
+            gan_loss = self.adversarial.train_on_batch([realX, noisy], act_real)
 
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: [RvsF: %f, FvsN: %f], Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss_rf, discriminator_loss_fn, gan_loss))
 
-    def performance(self, step, test_data):
+    def performance(self, epoch, test_data):
 
-        sub_test_data = test_data[step*10:(step+1)*10]
+        sub_test_data = test_data[epoch * 10:(epoch + 1) * 10]
 
-        # prepare fake examples
-        generated, _, noise = self.noisy_samples.denoise_samples(real_samples=sub_test_data)
+        # generate fake examples
+        noisy = self.noisy_samples.add_noise(real_samples=sub_test_data)
+        generated = self.generator.predict(noisy)
 
         # save plot to file
-        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (step + 1)
-        data_triplet = np.concatenate([sub_test_data, noise, generated], axis=2)
+        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (epoch + 1)
+        data_triplet = np.concatenate([sub_test_data, noisy, generated], axis=2)
         plot_images(data_triplet, path=fig_file)
 
         # save the generator model
-        model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
+        model_file = self.performance_output_path + 'model_%04d.h5' % (epoch + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
 
@@ -230,4 +235,4 @@ if __name__ == '__main__':
     dataset = Dataset(dataset='caltech256')
     dataset.split_test_data(test_sample=500)
     gan = SiameseDenoiseGAN(data_shape=dataset.data_shape)
-    gan.train(dataset=dataset, batch_size=32, epochs=50)
+    gan.train(dataset=dataset, batch_size=8, epochs=50)

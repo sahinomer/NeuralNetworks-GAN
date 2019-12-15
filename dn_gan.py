@@ -101,7 +101,7 @@ class DenoiseGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(generator=self.generator, shape=self.data_shape, noise_type='s&p')
+        self.noisy_samples = NoisySamples(shape=self.data_shape, noise_type='s&p')
 
         self.performance_output_path = 'performance/temp/'
         if not os.path.exists(self.performance_output_path):
@@ -119,42 +119,47 @@ class DenoiseGAN:
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e, epochs))
             self.single_epoch(dataset, batch_size)
-            self.performance(step=e, test_data=dataset.test_data)
+            self.performance(epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
         half_batch_size = int(batch_size / 2)
         trained_samples = 0
 
-        for realX, _, realY in dataset.iter_samples(half_batch_size):
-            fakeX, fakeY, _ = self.noisy_samples.denoise_samples(real_samples=realX)
+        for realX, _ in dataset.iter_samples(batch_size):
+            noisy = self.noisy_samples.add_noise(real_samples=realX)
+            fakeX = self.generator.predict(noisy)
             X = np.vstack([realX, fakeX])
+
+            realY = np.ones(shape=(len(realX),))
+            fakeY = np.zeros(shape=(len(fakeX),))
             Y = np.hstack([realY, fakeY])
 
             discriminator_loss = self.discriminator.train_on_batch(X, Y)
 
-            noisy_input = self.noisy_samples.add_noise(realX)
-            act_real = np.ones(shape=(len(noisy_input),))
+            noisy = self.noisy_samples.add_noise(realX)
+            act_real = np.ones(shape=(len(noisy),))
 
-            gan_loss = self.adversarial.train_on_batch(noisy_input, act_real)
+            gan_loss = self.adversarial.train_on_batch(noisy, act_real)
 
             trained_samples = min(trained_samples+half_batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
-    def performance(self, step, test_data):
+    def performance(self, epoch, test_data):
 
-        sub_test_data = test_data[step*10:(step+1)*10]
+        sub_test_data = test_data[epoch * 10:(epoch + 1) * 10]
 
         # prepare fake examples
-        generated, _, noise = self.noisy_samples.denoise_samples(real_samples=sub_test_data)
+        noisy = self.noisy_samples.add_noise(real_samples=sub_test_data)
+        generated = self.generator.predict(noisy)
 
         # save plot to file
-        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (step + 1)
-        data_triplet = np.concatenate([sub_test_data, noise, generated], axis=2)
+        fig_file = self.performance_output_path + 'epoch-%04d_plot.png' % (epoch + 1)
+        data_triplet = np.concatenate([sub_test_data, noisy, generated], axis=2)
         plot_images(data_triplet, path=fig_file)
 
         # save the generator model
-        model_file = self.performance_output_path + 'model_%04d.h5' % (step + 1)
+        model_file = self.performance_output_path + 'model_%04d.h5' % (epoch + 1)
         self.generator.save(model_file)
         print('>Saved: %s and %s' % (fig_file, model_file))
 

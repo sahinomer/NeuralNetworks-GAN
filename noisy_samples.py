@@ -45,17 +45,10 @@ def generate_noise(noise_type, data_shape, samples):
 
 class NoisySamples:
 
-    def __init__(self, generator, shape, noise_type):
-        self.generator = generator
+    def __init__(self, shape, noise_type):
         self.shape = shape
         self.noise_type = noise_type
 
     def add_noise(self, real_samples):
         noisy = generate_noise(noise_type=self.noise_type, data_shape=self.shape, samples=real_samples)
         return noisy
-
-    def denoise_samples(self, real_samples):
-        noisy_samples = self.add_noise(real_samples)
-        fake_data = self.generator.predict(noisy_samples)
-        fake_label = np.zeros((len(real_samples),))
-        return fake_data, fake_label, noisy_samples
