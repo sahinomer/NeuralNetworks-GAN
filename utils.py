@@ -7,6 +7,9 @@ from skimage.measure import compare_ssim
 
 
 def performance(model, epoch, test_data):
+
+    test_data = test_data[epoch * 100:(epoch + 1) * 100]
+
     # generate fake examples
     noisy = model.noisy_samples.add_noise(real_samples=test_data)
     generated = model.generator.predict(noisy)
@@ -39,12 +42,16 @@ def measure_and_plot(original_images, noisy_images, generated_images, path=None)
         fig = pyplot.figure()
         fig.suptitle('SSIM:' + str(ssim), fontsize=12, fontweight='bold')
 
-        pyplot.axis('off')
         pyplot.subplot(1, 3, 1)
+        pyplot.axis('off')
         pyplot.imshow(original)
+
         pyplot.subplot(1, 3, 2)
+        pyplot.axis('off')
         pyplot.imshow(noisy)
+
         pyplot.subplot(1, 3, 3)
+        pyplot.axis('off')
         pyplot.imshow(generated)
 
         img_path = path + '-%04d.png' % (i+1)

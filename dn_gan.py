@@ -142,10 +142,3 @@ class DenoiseGAN:
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
             print('     %5d/%d -> Discriminator Loss: %f, Gan Loss: %f'
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
-
-
-if __name__ == '__main__':
-    dataset = Dataset(dataset='cifar10')
-    dataset.split_test_data(test_sample=100)
-    gan = DenoiseGAN(data_shape=dataset.data_shape)
-    gan.train(dataset=dataset, batch_size=64, epochs=20)
