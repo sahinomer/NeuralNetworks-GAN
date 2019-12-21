@@ -8,7 +8,7 @@ from keras_preprocessing.image import load_img, img_to_array
 from skimage.transform import resize
 
 
-def load_data(width=128, height=128, verbose=False):
+def load_data(width=128, height=128):
 
     img_res = str(width) + 'x' + str(height)
     try:
@@ -29,15 +29,16 @@ def load_data(width=128, height=128, verbose=False):
 
     category_list = os.listdir(path)
     sample = 0
-    for category in category_list:
+    for i, category in enumerate(category_list):
 
-        if verbose:
-            print(category + '...')
+        print('\r', end='', flush=True)
+        progress = round(i/len(category_list)*100)
+        print("[%-100s] %3d%%" % ('#'*progress, progress), end='', flush=True)
 
-        category_path = path + '\\' + category + '\\'
+        category_path = path + '/' + category + '/'
         image_list = os.listdir(category_path)
 
-        for image in image_list:
+        for image in image_list[:5]:
             if image.lower().endswith('.jpg'):
                 img = load_img(category_path + image)
                 img = img_to_array(img)
@@ -46,6 +47,8 @@ def load_data(width=128, height=128, verbose=False):
                 image_data[sample, :, :, :] = img
                 image_label[sample] = int(category.split('.')[0])
                 sample += 1
+
+    print(flush=True)
 
     image_data = image_data[:sample, :, :, :]
     image_label = image_label[:sample]
@@ -60,7 +63,7 @@ def load_data(width=128, height=128, verbose=False):
 
 
 if __name__ == '__main__':
-    caltech256images = load_data(verbose=True)
+    caltech256images = load_data(width=32, height=32)
     print(caltech256images[0].shape)
     print(caltech256images[1].shape)
 
