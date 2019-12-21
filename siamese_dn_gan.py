@@ -10,8 +10,8 @@ from keras.optimizers import Adam
 
 from keras import backend as K
 
-from noisy_samples import NoisySamples
-from utils import measure_and_plot
+from noise_maker import NoiseMaker
+from utils import measure_and_plot, mean_ssim
 
 
 def euclidean_distance(vectors):
@@ -138,7 +138,7 @@ class SiameseDenoiseGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(shape=self.data_shape, noise_type='s&p')
+        self.noise_maker = NoiseMaker(shape=self.data_shape, noise_type='s&p')
 
         self.performance_output_path = 'performance/siamese_dn_gan_' + str(datetime.now().date())
 
@@ -160,7 +160,7 @@ class SiameseDenoiseGAN:
         trained_samples = 0
 
         for realX, _ in dataset.iter_samples(batch_size):
-            noisy = self.noisy_samples.add_noise(real_samples=realX)
+            noisy = self.noise_maker.add_noise(real_samples=realX)
             fakeX = self.generator.predict(noisy)
 
             # train discriminator
@@ -171,7 +171,7 @@ class SiameseDenoiseGAN:
             discriminator_loss_fn = self.discriminator.train_on_batch([fakeX, noisy], Y)
 
             # add noise to images
-            noisy = self.noisy_samples.add_noise(realX)
+            noisy = self.noise_maker.add_noise(realX)
             act_real = np.zeros(shape=(len(noisy),))
 
             # train adversarial
@@ -183,15 +183,17 @@ class SiameseDenoiseGAN:
 
     def performance(self, epoch, test_data):
 
-        test_data = test_data[epoch * 100:(epoch + 1) * 100]
-
-        # generate fake examples
-        noisy = self.noisy_samples.add_noise(real_samples=test_data)
-        generated = self.generator.predict(noisy)
-
         path = self.performance_output_path + '/epoch-%04d' % (epoch + 1)
         if not os.path.exists(path):
             os.makedirs(path)
+
+        mean_ssim(epoch, test_data, self.noise_maker, self.generator, self.performance_output_path + '/result.txt')
+
+        test_data = test_data[epoch * 100:(epoch + 1) * 100]
+
+        # generate fake examples
+        noisy = self.noise_maker.add_noise(real_samples=test_data)
+        generated = self.generator.predict(noisy)
 
         # save the generator model
         model_file = path + '/model_%04d.h5' % (epoch + 1)

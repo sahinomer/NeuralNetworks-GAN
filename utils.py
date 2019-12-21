@@ -28,16 +28,16 @@ from skimage.measure import compare_ssim
 #     print('>Saved model and figures to', path)
 
 
-def measure_and_plot(original_images, noisy_images, generated_images, path=None):
+def measure_and_plot(original_images, noisy_images, generated_images, path):
+
+    # scale from [-1,1] to [0,1]
+    original_images = (original_images + 1) / 2.0
+    noisy_images = (noisy_images + 1) / 2.0
+    generated_images = (generated_images + 1) / 2.0
 
     for i, (original, noisy, generated) in enumerate(zip(original_images, noisy_images, generated_images)):
 
         ssim = compare_ssim(original, generated, multichannel=True)
-
-        # scale from [-1,1] to [0,1]
-        original = (original + 1) / 2.0
-        noisy = (noisy + 1) / 2.0
-        generated = (generated + 1) / 2.0
 
         fig = pyplot.figure()
         fig.suptitle('SSIM:' + str(ssim), fontsize=12, fontweight='bold')
@@ -57,3 +57,21 @@ def measure_and_plot(original_images, noisy_images, generated_images, path=None)
         img_path = path + '-%04d.png' % (i+1)
         pyplot.savefig(img_path)
         pyplot.close()
+
+
+def mean_ssim(epoch, original_images, noise_maker, generator, path):
+    noisy = noise_maker.add_noise(real_samples=original_images)
+    generated_images = generator.predict(noisy)
+
+    # scale from [-1,1] to [0,1]
+    original_images = (original_images + 1) / 2.0
+    generated_images = (generated_images + 1) / 2.0
+
+    ssim_total = 0
+    for original, generated in zip(original_images, generated_images):
+        ssim_total += compare_ssim(original, generated, multichannel=True)
+
+    avg_ssim = ssim_total / len(original_images)
+
+    with open(path, mode='a+', encoding='utf8') as result:
+        print('%d\t%f' % (epoch, avg_ssim), file=result)

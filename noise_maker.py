@@ -43,7 +43,7 @@ def generate_noise(noise_type, data_shape, samples):
         return noisy
 
 
-class NoisySamples:
+class NoiseMaker:
 
     def __init__(self, shape, noise_type):
         self.shape = shape

@@ -9,7 +9,7 @@ from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormali
     Flatten, Dropout, Activation
 from keras.optimizers import Adam
 
-from noisy_samples import NoisySamples
+from noise_maker import NoiseMaker
 
 
 def build_adversarial(generator_model, discriminator_model):
@@ -101,7 +101,7 @@ class Img2ImgGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(generator=self.generator, shape=self.data_shape, noise_type='s&p')
+        self.noisy_samples = NoiseMaker(generator=self.generator, shape=self.data_shape, noise_type='s&p')
 
         self.performance_output_path = 'performance/temp/'
         if not os.path.exists(self.performance_output_path):

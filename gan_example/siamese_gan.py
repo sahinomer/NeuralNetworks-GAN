@@ -9,7 +9,7 @@ from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormali
     Flatten, Reshape, Dropout, Activation, subtract, multiply, dot, concatenate
 from keras.optimizers import Adam
 
-from noisy_samples import NoisySamples
+from noise_maker import NoiseMaker
 
 import keras.backend as K
 
@@ -133,7 +133,7 @@ class SiameseGAN:
         self.adversarial = None
 
         self.define_gan()
-        self.noisy_samples = NoisySamples(generator=self.generator)
+        self.noisy_samples = NoiseMaker(generator=self.generator)
 
         self.performance_output_path = 'performance/temp/'
         if not os.path.exists(self.performance_output_path):
