@@ -38,7 +38,7 @@ def load_data(width=128, height=128):
         category_path = path + '/' + category + '/'
         image_list = os.listdir(category_path)
 
-        for image in image_list[:5]:
+        for image in image_list:
             if image.lower().endswith('.jpg'):
                 img = load_img(category_path + image)
                 img = img_to_array(img)
