@@ -39,20 +39,20 @@ def measure_and_plot(original_images, noisy_images, generated_images, path):
 
         ssim = compare_ssim(original, generated, multichannel=True)
 
-        fig = pyplot.figure()
+        fig = pyplot.figure(figsize=(16, 8))
         fig.suptitle('SSIM:' + str(ssim), fontsize=12, fontweight='bold')
 
         pyplot.subplot(1, 3, 1)
         pyplot.axis('off')
-        pyplot.imshow(original)
+        pyplot.imshow(original, interpolation='none')
 
         pyplot.subplot(1, 3, 2)
         pyplot.axis('off')
-        pyplot.imshow(noisy)
+        pyplot.imshow(noisy, interpolation='none')
 
         pyplot.subplot(1, 3, 3)
         pyplot.axis('off')
-        pyplot.imshow(generated)
+        pyplot.imshow(generated, interpolation='none')
 
         img_path = path + '-%04d.png' % (i+1)
         pyplot.savefig(img_path)

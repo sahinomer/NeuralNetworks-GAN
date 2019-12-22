@@ -23,7 +23,7 @@ class Dataset:
             y = np.concatenate([trainY, testY], axis=0)
 
         elif dataset == 'caltech256':
-            x, y = caltech256.load_data(width=64, height=64)
+            x, y = caltech256.load_data(width=128, height=128)
 
         else:
             raise Exception('Unknown dataset!')

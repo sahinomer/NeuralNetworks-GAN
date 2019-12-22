@@ -50,8 +50,6 @@ def build_generator(input_shape):
 
     gen = Conv2D(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
                  kernel_initializer='glorot_normal')(noisy_input)
-    # 2N x 2N -> N x N
-    # gen = AvgPool2D(pool_size=(5, 5), strides=(2, 2), padding='same')(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
@@ -70,9 +68,6 @@ def build_generator(input_shape):
     gen = Dense(64)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
-
-    # gen = Conv2DTranspose(128, kernel_size=(3, 3), strides=(2, 2), padding='same',
-    #                       kernel_initializer='glorot_normal')(gen)
 
     gen = Conv2D(3, kernel_size=(3, 3), strides=(1, 1), padding='same',
                  kernel_initializer='glorot_normal')(gen)
