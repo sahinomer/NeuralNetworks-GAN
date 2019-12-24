@@ -147,7 +147,7 @@ class SiameseDenoiseGAN:
     def train(self, dataset, epochs=100, batch_size=64):
 
         for e in range(epochs):
-            print('Epochs: %3d/%d' % (e, epochs))
+            print('Epochs: %3d/%d' % (e+1, epochs))
             self.single_epoch(dataset, batch_size)
             self.performance(epoch=e, test_data=dataset.test_data)
 

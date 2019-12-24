@@ -74,4 +74,4 @@ def mean_ssim(epoch, original_images, noise_maker, generator, path):
     avg_ssim = ssim_total / len(original_images)
 
     with open(path, mode='a+', encoding='utf8') as result:
-        print('%d\t%f' % (epoch, avg_ssim), file=result)
+        print('%d\t%f' % (epoch+1, avg_ssim), file=result)
