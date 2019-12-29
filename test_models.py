@@ -37,7 +37,7 @@ if __name__ == '__main__':
     dataset.split_test_data(test_sample=2000)
     noise_maker = NoiseMaker(shape=dataset.data_shape, noise_type='s&p')
 
-    model_folder = 'C:/PycharmProjects/NeuralNetworks-GAN/performance/caltech256-64x64-siamese_dn_gan_2019-12-17'
+    model_folder = 'C:/PycharmProjects/NeuralNetworks-GAN/performance/caltech256-128x128-siamese_dn_gan_2019-12-21'
 
     for epoch in range(20):
         generator_path = model_folder + '/epoch-%04d' % (epoch + 1) + '/model_%04d.h5' % (epoch + 1)
