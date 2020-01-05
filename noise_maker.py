@@ -10,7 +10,8 @@ def generate_noise(noise_type, data_shape, samples):
         sigma = var ** 0.5
         gauss = np.random.normal(mean, sigma, data_shape)
         noisy = samples + gauss
-        noisy = noisy / noisy.max()
+        noisy = (noisy - noisy.min()) / (noisy.max() - noisy.min())
+        noisy = (noisy - 0.5) / 0.5
         return noisy
 
     elif noise_type == "s&p":
@@ -39,7 +40,8 @@ def generate_noise(noise_type, data_shape, samples):
     elif noise_type == "speckle":
         gauss = np.random.randn(sample_number, data_shape[0], data_shape[1], data_shape[2]) / 2
         noisy = samples + gauss
-        noisy = noisy / noisy.max()
+        noisy = (noisy - noisy.min()) / (noisy.max() - noisy.min())
+        noisy = (noisy - 0.5) / 0.5
         return noisy
 
 
