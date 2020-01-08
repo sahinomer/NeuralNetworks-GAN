@@ -7,6 +7,10 @@ import caltech256
 class Dataset:
 
     def __init__(self, dataset='cifar10'):
+        """
+        Initialize dataset class, assign data shape, load dataset
+        :param dataset: Dataset name 'cifar10' or 'caltech256'
+        """
         self.data = None
         self.label = None
         self.data_shape = None
@@ -16,6 +20,10 @@ class Dataset:
         self.load_dataset(dataset=dataset)
 
     def load_dataset(self, dataset='cifar10'):
+        """
+        Load given dataset and scale from [0,255] to [-1,1]
+        :param dataset: Dataset name 'cifar10' or 'caltech256'
+        """
 
         if dataset == 'cifar10':
             (trainX, trainY), (testX, testY) = cifar10.load_data()
@@ -39,6 +47,11 @@ class Dataset:
         self.sample_number = len(x)
 
     def iter_samples(self, sample_number):
+        """
+        Iterate data up to sample number
+        :param sample_number: Batch size for iteration
+        :return: Image data and labels
+        """
         start = 0
         while start < self.sample_number:
             end = start + sample_number
@@ -46,6 +59,12 @@ class Dataset:
             start = end
 
     def split_test_data(self, test_sample=-1):
+        """
+        Split test data and assign to test attribute of the class
+        :param test_sample: Number of test samples or test class.
+                            If test_sample less than 10, select an image class as the test set,
+                            otherwise, select the first test_sample samples as the test set.
+        """
 
         if test_sample > 10:  # more than class number
             # test_indices = np.random.randint(0, self.sample_number, size=test_sample)

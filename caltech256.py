@@ -9,6 +9,12 @@ from skimage.transform import resize
 
 
 def load_data(width=128, height=128):
+    """
+    Load CALTECH256 dataset, resize and cache for future load
+    :param width: Width to resize
+    :param height: Height to resize
+    :return: Image data and labels
+    """
 
     img_res = str(width) + 'x' + str(height)
     try:
@@ -31,6 +37,7 @@ def load_data(width=128, height=128):
     sample = 0
     for i, category in enumerate(category_list):
 
+        # Progress bar
         print('\r', end='', flush=True)
         progress = round(i/len(category_list)*100)
         print("[%-100s] %3d%%" % ('#'*progress, progress), end='', flush=True)
@@ -63,7 +70,8 @@ def load_data(width=128, height=128):
 
 
 if __name__ == '__main__':
+    # Test script for the CALTECH256 data loader
     caltech256images = load_data(width=32, height=32)
-    print(caltech256images[0].shape)
-    print(caltech256images[1].shape)
+    print('Data Shape :', caltech256images[0].shape)
+    print('Label Shape:', caltech256images[1].shape)
 
