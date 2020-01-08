@@ -29,6 +29,13 @@ from skimage.measure import compare_ssim
 
 
 def measure_and_plot(original_images, noisy_images, generated_images, path):
+    """
+    Measure SSIM between real and denoised images and plot results
+    :param original_images: Real images
+    :param noisy_images: Noisy images
+    :param generated_images: Denoised images
+    :param path: Path to figures that saved
+    """
 
     # scale from [-1,1] to [0,1]
     original_images = (original_images + 1) / 2.0
@@ -60,6 +67,14 @@ def measure_and_plot(original_images, noisy_images, generated_images, path):
 
 
 def mean_ssim(epoch, original_images, noise_maker, generator, path):
+    """
+    Calculate average SSIM on the test set
+    :param epoch: Current epoch for indexing
+    :param original_images: Real images
+    :param noise_maker: Noise maker object
+    :param generator: Generative model for denoising
+    :param path: Path to SSIM index that saved
+    """
     noisy = noise_maker.add_noise(real_samples=original_images)
     generated_images = generator.predict(noisy)
 
