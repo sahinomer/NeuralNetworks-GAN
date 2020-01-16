@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 
 from keras import Input, Model
-from keras.layers import Dense, Conv2D, Conv2DTranspose, LeakyReLU, BatchNormalization, \
+from keras.layers import Dense, Conv2D, LeakyReLU, BatchNormalization, \
     Flatten, Dropout, Activation
 from keras.optimizers import Adam
 
@@ -13,6 +13,10 @@ from utils import measure_and_plot, mean_ssim
 
 
 def build_adversarial(generator_model, discriminator_model):
+    """
+    Adversarial Model builder
+        Input -> Generator -> Discriminator(static, untrainable) -> Real/Fake
+    """
     discriminator_model.trainable = False
 
     # generator.output -> discriminator.input
@@ -27,6 +31,11 @@ def build_adversarial(generator_model, discriminator_model):
 
 
 def build_generator(input_shape):
+    """
+    Generator Model Builder
+        Input(noisy image) -> Convolution2D(128) -> Dense(128)
+                    -> Dense(256) -> Dense(512) -> Dense(64) -> Convolution2D(3)
+    """
     noisy_input = Input(shape=input_shape)
 
     gen = Conv2D(128, kernel_size=(3, 3), strides=(1, 1), padding='same',
@@ -60,6 +69,11 @@ def build_generator(input_shape):
 
 
 def build_discriminator(input_shape):
+    """
+    Build Discriminator Model
+        Input -> Convolution2D(32) -> Convolution2D(64) -> Convolution2D(128)
+                    -> Convolution2D(256) -> Output(1) : Real or Fake
+    """
     input_data = Input(shape=input_shape)
 
     cnn = Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), padding='same')(input_data)
@@ -95,6 +109,9 @@ def build_discriminator(input_shape):
 class DenoiseGAN:
 
     def __init__(self, data_shape):
+        """
+        Initialize DN-GAN
+        """
         self.data_shape = data_shape
         self.discriminator = None
         self.generator = None
@@ -106,36 +123,52 @@ class DenoiseGAN:
         self.performance_output_path = 'performance/dn_gan_' + str(datetime.now().date())
 
     def define_gan(self):
+        """
+        Build Models
+            Generative model
+            Discriminative model
+            Adversarial model
+        """
         self.generator = build_generator(input_shape=self.data_shape)
         self.discriminator = build_discriminator(input_shape=self.data_shape)
 
         self.adversarial = build_adversarial(generator_model=self.generator,
                                              discriminator_model=self.discriminator)
 
-    def train(self, dataset, epochs=100, batch_size=64):
-
+    def train(self, dataset, epochs=20, batch_size=64):
+        """
+        Train model
+        """
         for e in range(epochs):
             print('Epochs: %3d/%d' % (e+1, epochs))
             self.single_epoch(dataset, batch_size)
             self.performance(epoch=e, test_data=dataset.test_data)
 
     def single_epoch(self, dataset, batch_size):
+        """
+        Single iteration/epoch
+            Iterate dataset as batch size
+        """
         trained_samples = 0
 
         for realX, _ in dataset.iter_samples(batch_size):
+            # Add noise to images and denoise them
             noisy = self.noise_maker.add_noise(real_samples=realX)
             fakeX = self.generator.predict(noisy)
             X = np.vstack([realX, fakeX])
 
-            realY = np.ones(shape=(len(realX),))
-            fakeY = np.zeros(shape=(len(fakeX),))
+            realY = np.ones(shape=(len(realX),))    # Real images with label 1
+            fakeY = np.zeros(shape=(len(fakeX),))   # Denoised images with label 0
             Y = np.hstack([realY, fakeY])
 
+            # Train discriminative model with real and denoised images
             discriminator_loss = self.discriminator.train_on_batch(X, Y)
 
+            # Add noise to images
             noisy = self.noise_maker.add_noise(realX)
             act_real = np.ones(shape=(len(noisy),))
 
+            # Train adversarial model with denoised images that are labeled like real images
             gan_loss = self.adversarial.train_on_batch(noisy, act_real)
 
             trained_samples = min(trained_samples+batch_size, dataset.sample_number)
@@ -143,23 +176,27 @@ class DenoiseGAN:
                   % (trained_samples, dataset.sample_number, discriminator_loss, gan_loss))
 
     def performance(self, epoch, test_data):
-
+        """
+        Measure performance of model at each iteration
+        """
         path = self.performance_output_path + '/epoch-%04d' % (epoch + 1)
         if not os.path.exists(path):
             os.makedirs(path)
 
+        # Average SSIM index on test set
         mean_ssim(epoch, test_data, self.noise_maker, self.generator, self.performance_output_path + '/result.txt')
 
         test_data = test_data[epoch * 100:(epoch + 1) * 100]
 
-        # generate fake examples
+        # Generate denoised samples - add noise test images and denoise
         noisy = self.noise_maker.add_noise(real_samples=test_data)
         generated = self.generator.predict(noisy)
 
-        # save the generator model
+        # Save the generator model
         model_file = path + '/model_%04d.h5' % (epoch + 1)
         self.generator.save(model_file)
 
+        # Save figures
         fig_file = path + '/plot_%04d' % ((epoch + 1))
         measure_and_plot(original_images=test_data, noisy_images=noisy, generated_images=generated, path=fig_file)
 
